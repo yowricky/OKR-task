@@ -20,7 +20,7 @@
         "minHeight": 600
       }
     ],
-    "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" }
+    "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://api.qrserver.com" }
   },
   "plugins": {
     "notification": { "all": true }

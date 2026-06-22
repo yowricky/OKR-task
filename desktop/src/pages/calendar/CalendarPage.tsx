@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, endOfMonth } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/api/client';
@@ -10,7 +10,7 @@ import type { CalendarEvent } from '@app/shared';
 export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const monthStart = format(subMonths(currentDate, 1), 'yyyy-MM-01');
-  const monthEnd = format(addMonths(currentDate, 1), 'yyyy-MM-t');
+  const monthEnd = format(endOfMonth(addMonths(currentDate, 1)), 'yyyy-MM-dd');
 
   const { data: events = [] } = useQuery({
     queryKey: ['calendar', monthStart, monthEnd],
