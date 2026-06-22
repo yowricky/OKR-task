@@ -45,7 +45,10 @@ export async function createEvent(input: CreateEventInput, ownerId: string) {
   return event;
 }
 
-export async function updateEvent(id: string, input: Partial<CreateEventInput>) {
+export async function updateEvent(id: string, input: Partial<CreateEventInput>, userId: string) {
+  const [existing] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).limit(1);
+  if (!existing || existing.ownerId !== userId) return null;
+
   const [event] = await db.update(calendarEvents)
     .set({ ...input, updatedAt: new Date().toISOString() })
     .where(eq(calendarEvents.id, id))
@@ -53,6 +56,9 @@ export async function updateEvent(id: string, input: Partial<CreateEventInput>) 
   return event;
 }
 
-export async function deleteEvent(id: string) {
+export async function deleteEvent(id: string, userId: string) {
+  const [existing] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).limit(1);
+  if (!existing || existing.ownerId !== userId) return null;
+
   await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
 }
