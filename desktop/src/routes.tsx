@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth';
 import { AppLayout } from './components/layout/AppLayout';
 import { CalendarPage } from './pages/calendar/CalendarPage';
+import { LoginPage } from './pages/LoginPage';
 import { OKRDashboardPage } from './pages/okr/OKRDashboardPage';
 import { MyDayPage } from './pages/tasks/MyDayPage';
 import { TaskDetailPage } from './pages/tasks/TaskDetailPage';
