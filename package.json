@@ -1,0 +1,10 @@
+{
+  "name": "task-app",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter @app/server dev",
+    "dev:desktop": "pnpm --filter @app/desktop tauri dev",
+    "build:shared": "pnpm --filter @app/shared build",
+    "test": "pnpm -r test"
+  }
+}
