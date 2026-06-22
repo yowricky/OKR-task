@@ -10,7 +10,7 @@
     "beforeBuildCommand": "pnpm build"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "title": "任务管理",
@@ -20,7 +20,7 @@
         "minHeight": 600
       }
     ],
-    "security": { "csp": null }
+    "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" }
   },
   "plugins": {
     "notification": { "all": true }
