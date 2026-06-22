@@ -116,7 +116,7 @@ export interface KeyResult {
   currentValue: number;
   unit: string;
   ownerId: string;
-  progress: number;
+  progress: number; // 服务端计算字段: Math.min(100, Math.round(currentValue / targetValue * 100))
   createdAt: string;
   updatedAt: string;
 }
@@ -149,6 +149,7 @@ export interface RiskItem {
   suggestedAction: string | null;
   status: RiskStatus;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ========== API 包装 ==========
@@ -158,16 +159,13 @@ export interface ApiResponse<T> {
   message: string;
 }
 
-export interface PaginatedResponse<T> {
-  code: number;
-  data: {
-    items: T[];
-    total: number;
-    page: number;
-    pageSize: number;
-  };
-  message: string;
-}
+export interface PaginatedResponse<T> extends ApiResponse<{
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages?: number;
+}> {}
 
 export interface LoginRequest {
   account: string;
