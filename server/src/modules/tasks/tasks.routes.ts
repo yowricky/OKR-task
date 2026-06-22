@@ -33,13 +33,13 @@ export async function taskRoutes(app: FastifyInstance) {
   app.put('/:id', async (req) => {
     const { id } = req.params as { id: string };
     const input = updateTaskSchema.parse(req.body);
-    const task = await updateTask(id, input);
+    const task = await updateTask(id, input, (req as any).user.sub);
     return { code: 200, data: task, message: 'ok' };
   });
 
   app.delete('/:id', async (req) => {
     const { id } = req.params as { id: string };
-    await deleteTask(id);
+    await deleteTask(id, (req as any).user.sub);
     return { code: 200, data: null, message: 'ok' };
   });
 }

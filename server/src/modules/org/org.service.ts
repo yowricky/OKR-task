@@ -20,10 +20,13 @@ export async function createOrg(input: { name: string; code: string; parentId?: 
 }
 
 export async function listUsers(orgId?: string) {
+  let result;
   if (orgId) {
-    return db.select().from(users).where(eq(users.orgId, orgId));
+    result = await db.select().from(users).where(eq(users.orgId, orgId));
+  } else {
+    result = await db.select().from(users);
   }
-  return db.select().from(users);
+  return result.map(({ passwordHash, ...safe }) => safe);
 }
 
 export async function createUser(input: { account: string; name: string; email: string; password: string; orgId: string; role: string }) {

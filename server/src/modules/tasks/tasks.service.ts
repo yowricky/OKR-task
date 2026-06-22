@@ -57,13 +57,21 @@ export async function createTask(input: CreateTaskInput, ownerId: string) {
   return task;
 }
 
-export async function updateTask(id: string, input: UpdateTaskInput) {
+export async function updateTask(id: string, input: UpdateTaskInput, userId: string) {
+  // Ownership check
+  const existing = await getTask(id);
+  if (existing.ownerId !== userId) throw new Error('无权修改此任务');
+
   const [task] = await db.update(tasks).set({ ...input, updatedAt: new Date().toISOString() }).where(eq(tasks.id, id)).returning();
   if (!task) throw new Error('任务不存在');
   return task;
 }
 
-export async function deleteTask(id: string) {
+export async function deleteTask(id: string, userId: string) {
+  // Ownership check
+  const existing = await getTask(id);
+  if (existing.ownerId !== userId) throw new Error('无权删除此任务');
+
   await db.delete(tasks).where(eq(tasks.id, id));
 }
 
