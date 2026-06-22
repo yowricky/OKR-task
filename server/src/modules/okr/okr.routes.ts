@@ -1,8 +1,11 @@
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { createObjectiveSchema, createKRSchema, okrQuerySchema } from './okr.schema';
 import { listObjectives, getObjective, createObjective, createKeyResult, updateKeyResultProgress, getDashboard } from './okr.service';
+
+const progressSchema = z.object({ currentValue: z.number().min(0) });
 
 export async function okrRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -33,13 +36,13 @@ export async function okrRoutes(app: FastifyInstance) {
 
   app.put('/key-results/:id/progress', async (req) => {
     const { id } = req.params as { id: string };
-    const { currentValue } = req.body as { currentValue: number };
+    const { currentValue } = progressSchema.parse(req.body);
     const kr = await updateKeyResultProgress(id, currentValue);
     return { code: 200, data: kr, message: 'ok' };
   });
 
   app.get('/dashboard', async (req) => {
-    const query = req.query as { orgId?: string; period?: string };
+    const query = okrQuerySchema.parse(req.query);
     const dashboard = await getDashboard(query.orgId, query.period);
     return { code: 200, data: dashboard, message: 'ok' };
   });

@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
 import { db } from '../../../db';
 import { users } from '../../../db/schema';
+import type { User } from '@app/shared';
 
 const CORP_ID = process.env.WEWORK_CORP_ID || '';
 const AGENT_SECRET = process.env.WEWORK_AGENT_SECRET || '';
@@ -9,6 +10,17 @@ const REDIRECT_URI = process.env.WEWORK_REDIRECT_URI || 'http://localhost:1420/a
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
+
+function toSafeUser(user: typeof users.$inferSelect): User {
+  const { passwordHash, skillTags, ...rest } = user;
+  return {
+    ...rest,
+    skillTags: skillTags ?? [],
+    status: rest.status as 'active' | 'disabled',
+    createdAt: rest.createdAt.toISOString(),
+    updatedAt: rest.updatedAt.toISOString(),
+  };
+}
 
 async function getAccessToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.token;
@@ -27,7 +39,7 @@ export function getQrUrl(): { qrUrl: string; state: string } {
   return { qrUrl, state };
 }
 
-export async function handleCallback(code: string): Promise<{ accessToken: string; refreshToken: string; user: any }> {
+export async function handleCallback(code: string): Promise<{ accessToken: string; refreshToken: string; user: User }> {
   const token = await getAccessToken();
   const res = await fetch(`https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token=${token}&code=${code}`);
   const json = await res.json() as any;
@@ -45,6 +57,5 @@ export async function handleCallback(code: string): Promise<{ accessToken: strin
   const accessToken = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '15m' });
   const refreshToken = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
-  const { passwordHash, ...safeUser } = user;
-  return { accessToken, refreshToken, user: safeUser };
+  return { accessToken, refreshToken, user: toSafeUser(user) };
 }
