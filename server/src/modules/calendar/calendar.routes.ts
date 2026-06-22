@@ -21,13 +21,13 @@ export async function calendarRoutes(app: FastifyInstance) {
   app.put('/events/:id', async (req) => {
     const { id } = req.params as { id: string };
     const input = updateEventSchema.parse(req.body);
-    const event = await updateEvent(id, input);
+    const event = await updateEvent(id, input, (req as any).user.sub);
     return { code: 200, data: event, message: 'ok' };
   });
 
   app.delete('/events/:id', async (req) => {
     const { id } = req.params as { id: string };
-    await deleteEvent(id);
+    await deleteEvent(id, (req as any).user.sub);
     return { code: 200, data: null, message: 'ok' };
   });
 }
