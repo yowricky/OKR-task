@@ -1,21 +1,25 @@
-import { eq, and, sql, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, sql, desc, gte, lte, isNotNull } from 'drizzle-orm';
 import { db } from '../../db';
 import { tasks } from '../../db/schema';
-import type { CreateTaskInput, UpdateTaskInput } from '@app/shared';
+import type { CreateTaskInput, UpdateTaskInput, Priority, TaskStatus } from '@app/shared';
 
 export async function listTasks(query: {
   list?: string;
   status?: string;
   ownerId?: string;
   krId?: string;
+  priority?: string;
+  projectId?: string;
   page: number;
   pageSize: number;
 }) {
   const conditions = [];
 
-  if (query.status) conditions.push(eq(tasks.status, query.status as any));
+  if (query.status) conditions.push(eq(tasks.status, query.status as TaskStatus));
   if (query.ownerId) conditions.push(eq(tasks.ownerId, query.ownerId));
   if (query.krId) conditions.push(eq(tasks.krId, query.krId));
+  if (query.priority) conditions.push(eq(tasks.priority, query.priority as Priority));
+  if (query.projectId) conditions.push(eq(tasks.projectId, query.projectId));
 
   if (query.list === 'myday') {
     const today = new Date();
@@ -24,6 +28,14 @@ export async function listTasks(query: {
     tomorrow.setDate(tomorrow.getDate() + 1);
     conditions.push(gte(tasks.dueDate, today.toISOString()));
     conditions.push(lte(tasks.dueDate, tomorrow.toISOString()));
+  }
+
+  if (query.list === 'important') {
+    conditions.push(eq(tasks.priority, 'high'));
+  }
+
+  if (query.list === 'planned') {
+    conditions.push(isNotNull(tasks.planStartDate));
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;

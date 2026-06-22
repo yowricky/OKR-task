@@ -5,6 +5,7 @@ import { calendarRoutes } from './modules/calendar/calendar.routes';
 import { okrRoutes } from './modules/okr/okr.routes';
 import { riskRoutes } from './modules/risk/risk.routes';
 import { taskRoutes } from './modules/tasks/tasks.routes';
+import { wsRoutes } from './modules/ws/ws.routes';
 import { orgRoutes } from './modules/org/org.routes';
 
 async function main() {
@@ -17,6 +18,7 @@ async function main() {
   await app.register(riskRoutes, { prefix: '/api/risks' });
   await app.register(taskRoutes, { prefix: '/api/tasks' });
   await app.register(orgRoutes, { prefix: '/api/org' });
+  await app.register(wsRoutes);
 
   const port = Number(process.env.PORT) || 3000;
   await app.listen({ port, host: '0.0.0.0' });

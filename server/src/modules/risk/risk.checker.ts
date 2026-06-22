@@ -1,4 +1,4 @@
-import { eq, and, lte } from 'drizzle-orm';
+import { eq, and, lte, gt } from 'drizzle-orm';
 import { db } from '../../db';
 import { tasks } from '../../db/schema';
 
@@ -12,11 +12,11 @@ export async function checkDelayedTasks() {
   );
 
   const dueIn3Days = await db.select().from(tasks).where(
-    and(lte(tasks.dueDate, threeDaysFromNow), lte(tasks.status as any, 'in_progress'))
+    and(eq(tasks.status, 'in_progress'), lte(tasks.dueDate, threeDaysFromNow), gt(tasks.dueDate, now))
   );
 
   const lagging = await db.select().from(tasks).where(
-    and(eq(tasks.status, 'in_progress'), lte(tasks.dueDate, oneDayFromNow))
+    and(eq(tasks.status, 'in_progress'), lte(tasks.dueDate, oneDayFromNow), gt(tasks.dueDate, now))
   );
 
   return { overdue, dueIn3Days, lagging };

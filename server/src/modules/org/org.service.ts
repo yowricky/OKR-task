@@ -20,8 +20,10 @@ export async function createOrg(input: { name: string; code: string; parentId?: 
 }
 
 export async function listUsers(orgId?: string) {
-  const all = await db.select().from(users);
-  return orgId ? all.filter(u => u.orgId === orgId) : all;
+  if (orgId) {
+    return db.select().from(users).where(eq(users.orgId, orgId));
+  }
+  return db.select().from(users);
 }
 
 export async function createUser(input: { account: string; name: string; email: string; password: string; orgId: string; role: string }) {
@@ -31,10 +33,26 @@ export async function createUser(input: { account: string; name: string; email: 
   return safe;
 }
 
-export async function updateUser(id: string, input: any) {
+export async function updateUser(id: string, input: {
+  account?: string;
+  name?: string;
+  email?: string;
+  password?: string;
+  orgId?: string;
+  role?: string;
+  skillTags?: string[];
+  status?: string;
+}) {
+  const { password, ...rest } = input;
+  const setData: Record<string, unknown> = { ...rest, updatedAt: new Date() };
+  if (password) {
+    setData.passwordHash = await bcrypt.hash(password, 10);
+  }
   const [user] = await db.update(users)
-    .set({ ...input, updatedAt: new Date().toISOString() })
+    .set(setData)
     .where(eq(users.id, id))
     .returning();
-  return user;
+  if (!user) return null;
+  const { passwordHash: _, ...safe } = user;
+  return safe;
 }
