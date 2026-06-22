@@ -12,6 +12,7 @@ async function main() {
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(calendarRoutes, { prefix: '/api/calendar' });
   await app.register(okrRoutes, { prefix: '/api/okr' });
+  await app.register(riskRoutes, { prefix: '/api/risks' });
 
   const port = Number(process.env.PORT) || 3000;
   await app.listen({ port, host: '0.0.0.0' });
