@@ -26,20 +26,27 @@ export async function taskRoutes(app: FastifyInstance) {
 
   app.post('/', async (req) => {
     const input = createTaskSchema.parse(req.body);
-    const task = await createTask(input, (req as any).user.sub);
+    const currentUser = (req as any).user;
+    // Allow managers/admins to assign tasks to other users at creation time
+    const ownerId = (input.ownerId && (currentUser.role === 'admin' || currentUser.role === 'manager'))
+      ? input.ownerId
+      : currentUser.sub;
+    const task = await createTask(input, ownerId);
     return { code: 200, data: task, message: 'ok' };
   });
 
   app.put('/:id', async (req) => {
     const { id } = req.params as { id: string };
     const input = updateTaskSchema.parse(req.body);
-    const task = await updateTask(id, input, (req as any).user.sub);
+    const currentUser = (req as any).user;
+    const task = await updateTask(id, input, currentUser.sub, currentUser.role);
     return { code: 200, data: task, message: 'ok' };
   });
 
   app.delete('/:id', async (req) => {
     const { id } = req.params as { id: string };
-    await deleteTask(id, (req as any).user.sub);
+    const currentUser = (req as any).user;
+    await deleteTask(id, currentUser.sub, currentUser.role);
     return { code: 200, data: null, message: 'ok' };
   });
 }

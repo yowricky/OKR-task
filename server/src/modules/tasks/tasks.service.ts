@@ -1,6 +1,6 @@
-import { eq, and, sql, desc, gte, lte, isNotNull } from 'drizzle-orm';
+import { eq, and, sql, desc, gte, lte, isNotNull, inArray } from 'drizzle-orm';
 import { db } from '../../db';
-import { tasks } from '../../db/schema';
+import { tasks, keyResults } from '../../db/schema';
 import type { CreateTaskInput, UpdateTaskInput, Priority, TaskStatus } from '@app/shared';
 
 export async function listTasks(query: {
@@ -57,20 +57,43 @@ export async function createTask(input: CreateTaskInput, ownerId: string) {
   return task;
 }
 
-export async function updateTask(id: string, input: UpdateTaskInput, userId: string) {
-  // Ownership check
+export async function updateTask(id: string, input: UpdateTaskInput, userId: string, userRole?: string) {
+  // Ownership check — managers/admins can update any task
   const existing = await getTask(id);
-  if (existing.ownerId !== userId) throw new Error('无权修改此任务');
+  if (existing.ownerId !== userId && userRole !== 'admin' && userRole !== 'manager') {
+    throw new Error('无权修改此任务');
+  }
 
   const [task] = await db.update(tasks).set({ ...input, updatedAt: new Date().toISOString() }).where(eq(tasks.id, id)).returning();
   if (!task) throw new Error('任务不存在');
+
+  // KR progress auto-update: recalculate KR progress when status changes
+  if (task.krId && input.status) {
+    await recalcKRProgress(task.krId);
+  }
+
   return task;
 }
 
-export async function deleteTask(id: string, userId: string) {
-  // Ownership check
+export async function recalcKRProgress(krId: string) {
+  const linkedTasks = await db.select().from(tasks).where(eq(tasks.krId, krId));
+  const total = linkedTasks.length;
+  if (total === 0) return;
+
+  const completed = linkedTasks.filter(t => t.status === 'completed' || t.status === 'accepted').length;
+  const progress = Math.round((completed / total) * 100);
+
+  await db.update(keyResults)
+    .set({ progress, updatedAt: new Date().toISOString() })
+    .where(eq(keyResults.id, krId));
+}
+
+export async function deleteTask(id: string, userId: string, userRole?: string) {
+  // Ownership check — managers/admins can delete any task
   const existing = await getTask(id);
-  if (existing.ownerId !== userId) throw new Error('无权删除此任务');
+  if (existing.ownerId !== userId && userRole !== 'admin' && userRole !== 'manager') {
+    throw new Error('无权删除此任务');
+  }
 
   await db.delete(tasks).where(eq(tasks.id, id));
 }

@@ -1,7 +1,14 @@
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
-import { listRisks, updateRiskStatus, runRiskCheck } from './risk.service';
+import { listRisks, createRisk, updateRiskStatus, runRiskCheck } from './risk.service';
+
+const createRiskSchema = z.object({
+  taskId: z.string().uuid(),
+  level: z.enum(['high', 'medium', 'low']),
+  description: z.string().min(1).max(500),
+});
 
 export async function riskRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -10,6 +17,12 @@ export async function riskRoutes(app: FastifyInstance) {
     const { status } = req.query as { status?: string };
     const risks = await listRisks(status);
     return { code: 200, data: risks, message: 'ok' };
+  });
+
+  app.post('/', { preHandler: requireRole('admin', 'manager') }, async (req) => {
+    const input = createRiskSchema.parse(req.body);
+    const risk = await createRisk(input.taskId, input.level, input.description);
+    return { code: 200, data: risk, message: 'ok' };
   });
 
   app.post('/check', { preHandler: requireRole('admin', 'manager') }, async () => {

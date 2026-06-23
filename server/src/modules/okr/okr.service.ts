@@ -28,6 +28,12 @@ export async function createKeyResult(input: CreateKeyResultInput) {
   return kr;
 }
 
+export async function getKeyResult(id: string) {
+  const [kr] = await db.select().from(keyResults).where(eq(keyResults.id, id)).limit(1);
+  if (!kr) throw new Error('KR 不存在');
+  return kr;
+}
+
 export async function updateKeyResultProgress(id: string, currentValue: number) {
   const [kr] = await db.select().from(keyResults).where(eq(keyResults.id, id)).limit(1);
   if (!kr) throw new Error('KR 不存在');
@@ -40,10 +46,12 @@ export async function updateKeyResultProgress(id: string, currentValue: number) 
 }
 
 export async function getDashboard(orgId?: string, period?: string) {
-  const objs = await db.select().from(objectives).where(and(
-    orgId ? eq(objectives.orgId, orgId) : undefined,
-    period ? eq(objectives.period, period) : undefined,
-  ));
+  const conditions = [];
+  if (orgId) conditions.push(eq(objectives.orgId, orgId));
+  if (period) conditions.push(eq(objectives.period, period));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const objs = await db.select().from(objectives).where(where);
 
   if (objs.length === 0) return [];
 
