@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { CalendarDays, CheckSquare, Target } from 'lucide-react';
+import { CalendarDays, CheckSquare, Target, Settings } from 'lucide-react';
 
 const navItems = [
   { to: '/tasks/myday', icon: CheckSquare, label: '任务' },
@@ -28,6 +28,17 @@ export function Sidebar() {
         </NavLink>
       ))}
       <div className="flex-1" />
+      <NavLink
+        to="/admin"
+        title="设置"
+        className={({ isActive }) =>
+          `w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+            isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`
+        }
+      >
+        <Settings className="w-5 h-5" />
+      </NavLink>
     </aside>
   );
 }
