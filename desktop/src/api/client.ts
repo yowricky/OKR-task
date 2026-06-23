@@ -15,19 +15,12 @@ class ApiClient {
     if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
 
     const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-
-    // Try to parse body as JSON, fallback to empty object
-    let json: any = {};
-    try {
-      const text = await res.text();
-      if (text) json = JSON.parse(text);
-    } catch {}
+    const text = await res.text();
+    let json: any = text ? JSON.parse(text) : {};
 
     if (!res.ok) {
-      throw new Error(json.message || `请求失败(${res.status})`);
+      throw new Error(json.message || `请求失败(${res.status}): ${text.substring(0, 100)}`);
     }
-
-    // Wrap API response: {code, data, message} -> return data or whole object
     return json.data !== undefined && json.code !== undefined ? json.data : json;
   }
 
