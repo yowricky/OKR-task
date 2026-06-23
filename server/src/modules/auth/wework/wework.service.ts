@@ -7,7 +7,7 @@ import type { User } from '@app/shared';
 const CORP_ID = process.env.WEWORK_CORP_ID || '';
 const AGENT_SECRET = process.env.WEWORK_AGENT_SECRET || '';
 const REDIRECT_URI = process.env.WEWORK_REDIRECT_URI || 'http://localhost:1420/auth/callback';
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me-in-production';
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 

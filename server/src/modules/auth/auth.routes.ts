@@ -4,7 +4,7 @@ import { loginSchema, weworkCallbackSchema } from './auth.schema';
 import { login } from './auth.service';
 import { getQrUrl, handleCallback } from './wework/wework.service';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me-in-production';
 
 export async function authRoutes(app: FastifyInstance) {
   // 企微扫码 - 获取授权URL

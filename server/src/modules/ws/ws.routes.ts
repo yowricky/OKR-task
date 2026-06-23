@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me-in-production';
 const clients = new Map<string, WebSocket>();
 
 export async function wsRoutes(app: FastifyInstance) {

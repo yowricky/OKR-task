@@ -6,7 +6,7 @@ import { users } from '../../db/schema';
 import type { LoginInput } from './auth.schema';
 import type { LoginResponse, User } from '@app/shared';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me-in-production';
 
 function toSafeUser(user: typeof users.$inferSelect): User {
   const { passwordHash, skillTags, ...rest } = user;
