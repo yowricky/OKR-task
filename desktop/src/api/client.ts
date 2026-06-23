@@ -24,12 +24,11 @@ class ApiClient {
     } catch {}
 
     if (!res.ok) {
-      throw new Error(json.message || '请求失败');
+      throw new Error(json.message || `请求失败(${res.status})`);
     }
 
-    // undici returns code as number, express-style returns code as number
-    // return the data field if present, otherwise the whole json
-    return json.data !== undefined ? json.data : json;
+    // Wrap API response: {code, data, message} -> return data or whole object
+    return json.data !== undefined && json.code !== undefined ? json.data : json;
   }
 
   get<T>(path: string) { return this.request<T>(path); }
