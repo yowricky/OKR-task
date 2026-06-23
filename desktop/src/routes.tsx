@@ -7,6 +7,7 @@ import { TaskDetailPage } from './pages/tasks/TaskDetailPage';
 import { CalendarPage } from './pages/calendar/CalendarPage';
 import { OKRDashboardPage } from './pages/okr/OKRDashboardPage';
 import { OrgPage } from './pages/admin/OrgPage';
+import { RiskPage } from './pages/risk/RiskPage';
 
 // Auto-login guard
 function AutoLogin({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ export function AppRoutes() {
         <Route path="tasks/:id" element={<TaskDetailPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="okr" element={<OKRDashboardPage />} />
+        <Route path="risk" element={<RiskPage />} />
         <Route path="admin" element={<OrgPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

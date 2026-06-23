@@ -1,13 +1,30 @@
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { TaskCard } from '@/components/shared/TaskCard';
 import { CreateTaskDialog } from '@/components/shared/CreateTaskDialog';
+import { cn } from '@/lib/utils';
 import type { Task } from '@app/shared';
+
+type TaskFilter = 'myday' | 'important' | 'planned' | 'all';
+
+const FILTERS: { key: TaskFilter; label: string }[] = [
+  { key: 'myday', label: '我的一天' },
+  { key: 'important', label: '重要' },
+  { key: 'planned', label: '已计划日程' },
+  { key: 'all', label: '全部任务' },
+];
+
+function getTodayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export function MyDayPage() {
   const queryClient = useQueryClient();
+  const [activeFilter, setActiveFilter] = useState<TaskFilter>('myday');
 
-  // 获取所有任务（去掉list参数，后端list过滤可能有问题）
+  // 获取所有任务
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
@@ -24,8 +41,29 @@ export function MyDayPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   });
 
-  const pendingTasks = Array.isArray(tasks) ? tasks.filter((t: Task) => t.status !== 'completed' && t.status !== 'accepted') : [];
-  const completedTasks = Array.isArray(tasks) ? tasks.filter((t: Task) => t.status === 'completed' || t.status === 'accepted') : [];
+  const todayStr = getTodayStr();
+
+  const filteredTasks = useMemo(() => {
+    const all = Array.isArray(tasks) ? tasks : [];
+    switch (activeFilter) {
+      case 'myday':
+        return all.filter((t: Task) => t.dueDate && t.dueDate.startsWith(todayStr));
+      case 'important':
+        return all.filter((t: Task) => t.priority === 'high');
+      case 'planned':
+        return all.filter((t: Task) => t.planStartDate != null);
+      case 'all':
+      default:
+        return all;
+    }
+  }, [tasks, activeFilter, todayStr]);
+
+  const pendingTasks = filteredTasks.filter(
+    (t: Task) => t.status !== 'completed' && t.status !== 'accepted'
+  );
+  const completedTasks = filteredTasks.filter(
+    (t: Task) => t.status === 'completed' || t.status === 'accepted'
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -33,7 +71,12 @@ export function MyDayPage() {
       <div className="px-6 py-5 border-b border-border">
         <h1 className="text-2xl font-bold">任务管理</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+          {new Date().toLocaleDateString('zh-CN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long',
+          })}
         </p>
       </div>
 
@@ -48,9 +91,27 @@ export function MyDayPage() {
           <div className="text-xs text-muted-foreground mt-1">已完成</div>
         </div>
         <div className="bg-primary/10 rounded-xl p-4">
-          <div className="text-2xl font-bold text-primary">{Array.isArray(tasks) ? tasks.length : 0}</div>
-          <div className="text-xs text-muted-foreground mt-1">全部任务</div>
+          <div className="text-2xl font-bold text-primary">{filteredTasks.length}</div>
+          <div className="text-xs text-muted-foreground mt-1">当前筛选</div>
         </div>
+      </div>
+
+      {/* 筛选按钮 */}
+      <div className="flex items-center gap-2 px-6 pb-3">
+        {FILTERS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveFilter(key)}
+            className={cn(
+              'px-3 py-1.5 text-xs rounded-lg transition-colors',
+              activeFilter === key
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-accent text-accent-foreground hover:bg-accent/80'
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* 新建任务 */}
@@ -71,17 +132,29 @@ export function MyDayPage() {
           <>
             {pendingTasks.length > 0 && (
               <div className="mb-4">
-                <div className="text-xs font-medium text-muted-foreground uppercase px-3 py-1">未完成</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase px-3 py-1">
+                  未完成
+                </div>
                 {pendingTasks.map((task: Task) => (
-                  <TaskCard key={task.id} task={task} onToggle={() => toggleMutation.mutate(task)} />
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onToggle={() => toggleMutation.mutate(task)}
+                  />
                 ))}
               </div>
             )}
             {completedTasks.length > 0 && (
               <div>
-                <div className="text-xs font-medium text-muted-foreground uppercase px-3 py-1">已完成</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase px-3 py-1">
+                  已完成
+                </div>
                 {completedTasks.map((task: Task) => (
-                  <TaskCard key={task.id} task={task} onToggle={() => toggleMutation.mutate(task)} />
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onToggle={() => toggleMutation.mutate(task)}
+                  />
                 ))}
               </div>
             )}
