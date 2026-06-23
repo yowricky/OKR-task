@@ -1,5 +1,17 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+// Load .env manually for the seed script
+const envPath = resolve(__dirname, '../.env');
+try {
+  const envContent = readFileSync(envPath, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const match = line.match(/^([A-Z_]+)=(.*)$/);
+    if (match) process.env[match[1]] = match[2];
+  }
+} catch {}
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -7,6 +19,7 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'taskapp',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASS || '',
+  ssl: false,
 });
 
 async function seed() {

@@ -7,6 +7,7 @@ export const pool = new Pool({
   database: process.env.DB_NAME || 'taskapp',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASS || '',
+  ssl: false,
 });
 
 export const db = drizzle(pool);
