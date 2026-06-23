@@ -1,22 +1,19 @@
 {
   "name": "@app/desktop",
   "version": "0.0.1",
+  "description": "企业级任务管理桌面客户端",
+  "author": "yowricky",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "tauri": "tauri",
-    "electron:dev": "concurrently \"cross-env NODE_ENV=development vite\" \"sleep 2 && cross-env NODE_ENV=development electron .\"",
     "electron:build": "tsc && vite build && electron-builder --win portable",
-    "electron:build:nsis": "tsc && vite build && electron-builder --win nsis",
     "test": "vitest"
   },
   "dependencies": {
     "@app/shared": "workspace:*",
     "@tanstack/react-query": "^5.60.0",
-    "@tauri-apps/api": "^2.1.0",
-    "@tauri-apps/plugin-notification": "^2.2.0",
-    "@tauri-apps/plugin-shell": "^2.2.0",
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.460.0",
@@ -27,13 +24,10 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.1.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.0",
-    "concurrently": "^10.0.3",
-    "cross-env": "^10.1.0",
     "electron": "^42.4.1",
     "electron-builder": "^26.15.3",
     "postcss": "^8.4.0",
