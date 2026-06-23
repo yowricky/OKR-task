@@ -8,6 +8,7 @@
     "tauri": "tauri",
     "electron:dev": "concurrently \"cross-env NODE_ENV=development vite\" \"sleep 2 && cross-env NODE_ENV=development electron .\"",
     "electron:build": "tsc && vite build && electron-builder --win portable",
+    "electron:build:nsis": "tsc && vite build && electron-builder --win nsis",
     "test": "vitest"
   },
   "dependencies": {
