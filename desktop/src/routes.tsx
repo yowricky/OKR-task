@@ -18,20 +18,19 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
-        path="/"
         element={
           <ProtectedRoute>
             <AppLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/tasks/myday" replace />} />
-        <Route path="tasks/myday" element={<MyDayPage />} />
-        <Route path="tasks/:id" element={<TaskDetailPage />} />
-        <Route path="calendar" element={<CalendarPage />} />
-        <Route path="okr" element={<OKRDashboardPage />} />
+        <Route path="/tasks/myday" element={<MyDayPage />} />
+        <Route path="/tasks/:id" element={<TaskDetailPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/okr" element={<OKRDashboardPage />} />
+        <Route path="/" element={<Navigate to="/tasks/myday" replace />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/tasks/myday" replace />} />
     </Routes>
   );
 }
