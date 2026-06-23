@@ -15,13 +15,21 @@ class ApiClient {
     if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
 
     const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-    const json = await res.json();
+
+    // Try to parse body as JSON, fallback to empty object
+    let json: any = {};
+    try {
+      const text = await res.text();
+      if (text) json = JSON.parse(text);
+    } catch {}
 
     if (!res.ok) {
       throw new Error(json.message || '请求失败');
     }
 
-    return json.data;
+    // undici returns code as number, express-style returns code as number
+    // return the data field if present, otherwise the whole json
+    return json.data !== undefined ? json.data : json;
   }
 
   get<T>(path: string) { return this.request<T>(path); }
