@@ -178,39 +178,43 @@ function CreateOrgDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => vo
   const [code, setCode] = useState('10');
   const [parentId, setParentId] = useState<string>('');
 
-  const flatOrgs: { id: string; name: string; depth: number }[] = [];
+  const flatOrgs: { id: string; name: string; depth: number; code: string }[] = [];
   function flatten(list: OrgNode[], d: number) {
     for (const n of list) {
-      flatOrgs.push({ id: n.id, name: n.name, depth: d });
+      flatOrgs.push({ id: n.id, name: n.name, depth: d, code: n.code });
       flatten(n.children, d + 1);
     }
   }
   flatten(orgs, 0);
 
-  // 自动生成数字编码：找到同级最大数字+10
-  const autoGenerateCode = () => {
-    const siblings = parentId
-      ? orgs.flatMap((n) => flattenSiblings(n, parentId))
-      : orgs;
-    // 简化：所有已有code中找最大数字
-    const allCodes = flatOrgs.map((o) => orgs.find((n) => n.id === o.id)?.code || '0');
-    const existingOrgs = orgs.reduce<OrgNode[]>((acc, n) => acc.concat(n).concat(n.children), [] as any);
-    const maxNum = Math.max(0, ...flatOrgs.map((o) => {
-      const org = findOrgById(orgs, o.id);
-      const num = parseInt(org?.code || '0', 10);
-      return isNaN(num) ? 0 : num;
-    }));
-    setCode(String(maxNum + 10));
-  };
-
-  function findOrgById(list: OrgNode[], id: string): OrgNode | null {
+  // Recursively find all orgs
+  function getAllOrgs(list: OrgNode[]): OrgNode[] {
+    let result: OrgNode[] = [];
     for (const n of list) {
-      if (n.id === id) return n;
-      const found = findOrgById(n.children, id);
-      if (found) return found;
+      result.push(n);
+      result = result.concat(getAllOrgs(n.children));
     }
-    return null;
+    return result;
   }
+
+  // Auto-generate code as parent_code + child_index
+  const autoGenerateCode = () => {
+    if (!parentId) {
+      // 顶级部门：找到所有顶级部门的最大code+10
+      const topCodes = orgs.map((o) => parseInt(o.code, 10)).filter((n) => !isNaN(n));
+      setCode(String(Math.max(0, ...topCodes) + 10));
+    } else {
+      // 子部门：parentCode + 该parent下已有子部门数+1 (两位补齐)
+      const allOrgs = getAllOrgs(orgs);
+      const parent = allOrgs.find((o) => o.id === parentId);
+      if (parent) {
+        const siblingCount = parent.children.length;
+        const parentCode = parent.code.replace(/\D/g, '');
+        const seq = String(siblingCount + 1).padStart(2, '0');
+        setCode(`${parentCode}${seq}`);
+      }
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateOrgInput) => api.post<Organization>('/org/structure', payload),
@@ -230,6 +234,24 @@ function CreateOrgDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => vo
     });
   };
 
+  // Regenerate code when parent changes
+  const handleParentChange = (newParentId: string) => {
+    setParentId(newParentId);
+    if (newParentId) {
+      const allOrgs = getAllOrgs(orgs);
+      const parent = allOrgs.find((o) => o.id === newParentId);
+      if (parent) {
+        const siblingCount = parent.children.length;
+        const parentCode = parent.code.replace(/\D/g, '');
+        const seq = String(siblingCount + 1).padStart(2, '0');
+        setCode(`${parentCode}${seq}`);
+      }
+    } else {
+      const topCodes = orgs.map((o) => parseInt(o.code, 10)).filter((n) => !isNaN(n));
+      setCode(String(Math.max(0, ...topCodes) + 10));
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10" onClick={onClose}>
       <div className="bg-card rounded-xl shadow-xl border border-border p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -247,16 +269,21 @@ function CreateOrgDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => vo
             <input
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="数字编码如 10"
+              placeholder="数字编码如 1001"
               className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary"
             />
+            <p className="text-xs text-muted-foreground mt-1">选上级后自动生成二级编码（父编码+序号）</p>
           </div>
           <div>
             <label className="text-xs text-muted-foreground block mb-1">上级部门（可选）</label>
-            <select value={parentId} onChange={(e) => setParentId(e.target.value)} className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary">
+            <select
+              value={parentId}
+              onChange={(e) => handleParentChange(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary"
+            >
               <option value="">无（顶级部门）</option>
               {flatOrgs.map((o) => (
-                <option key={o.id} value={o.id}>{'  '.repeat(o.depth)}{o.name}</option>
+                <option key={o.id} value={o.id}>{'  '.repeat(o.depth)}{o.name} ({o.code})</option>
               ))}
             </select>
           </div>
