@@ -25,7 +25,7 @@ interface CreateUserInput {
 }
 
 // ========== Org Tree Node ==========
-function OrgTreeNode({ node, depth }: { node: OrgNode; depth: number }) {
+function OrgTreeNode({ node, depth, onCodeEdit }: { node: OrgNode; depth: number; onCodeEdit: (id: string) => void }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
 
@@ -44,12 +44,20 @@ function OrgTreeNode({ node, depth }: { node: OrgNode; depth: number }) {
         <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
         <span className="font-medium">{node.name}</span>
         <span className="text-xs text-muted-foreground">({node.code})</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onCodeEdit(node.id); }}
+          className="ml-1 p-0.5 opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity"
+        >
+          <Edit2 className="w-3 h-3" />
+        </button>
       </div>
       {expanded && hasChildren && (
         <div>
-          {node.children.map((child) => (
-            <OrgTreeNode key={child.id} node={child} depth={depth + 1} />
-          ))}
+          {node.children
+            .sort((a, b) => (parseInt(a.code, 10) || 0) - (parseInt(b.code, 10) || 0))
+            .map((child) => (
+              <OrgTreeNode key={child.id} node={child} depth={depth + 1} onCodeEdit={onCodeEdit} />
+            ))}
         </div>
       )}
     </div>
@@ -60,7 +68,7 @@ function OrgTreeNode({ node, depth }: { node: OrgNode; depth: number }) {
 function CreateOrgDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState('10');
   const [parentId, setParentId] = useState<string>('');
 
   const flatOrgs: { id: string; name: string; depth: number }[] = [];
@@ -71,6 +79,31 @@ function CreateOrgDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => vo
     }
   }
   flatten(orgs, 0);
+
+  // 自动生成数字编码：找到同级最大数字+10
+  const autoGenerateCode = () => {
+    const siblings = parentId
+      ? orgs.flatMap((n) => flattenSiblings(n, parentId))
+      : orgs;
+    // 简化：所有已有code中找最大数字
+    const allCodes = flatOrgs.map((o) => orgs.find((n) => n.id === o.id)?.code || '0');
+    const existingOrgs = orgs.reduce<OrgNode[]>((acc, n) => acc.concat(n).concat(n.children), [] as any);
+    const maxNum = Math.max(0, ...flatOrgs.map((o) => {
+      const org = findOrgById(orgs, o.id);
+      const num = parseInt(org?.code || '0', 10);
+      return isNaN(num) ? 0 : num;
+    }));
+    setCode(String(maxNum + 10));
+  };
+
+  function findOrgById(list: OrgNode[], id: string): OrgNode | null {
+    for (const n of list) {
+      if (n.id === id) return n;
+      const found = findOrgById(n.children, id);
+      if (found) return found;
+    }
+    return null;
+  }
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateOrgInput) => api.post<Organization>('/org/structure', payload),
@@ -100,8 +133,16 @@ function CreateOrgDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => vo
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="如：研发部" className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground block mb-1">部门编码</label>
-            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="如：RD" className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary" />
+            <label className="text-xs text-muted-foreground block mb-1">
+              部门编码
+              <button type="button" onClick={autoGenerateCode} className="ml-2 text-xs text-primary hover:underline">自动生成</button>
+            </label>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="数字编码如 10"
+              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary"
+            />
           </div>
           <div>
             <label className="text-xs text-muted-foreground block mb-1">上级部门（可选）</label>
@@ -263,6 +304,8 @@ export function OrgPage() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [editingRole, setEditingRole] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [editingCodeId, setEditingCodeId] = useState<string | null>(null);
+  const [editingCode, setEditingCode] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch org tree
@@ -277,7 +320,15 @@ export function OrgPage() {
     queryFn: () => api.get<User[]>('/org/users'),
   });
 
-  // Update user mutation
+  // Update org code inline (uses PATCH-like update via org routes)
+  const handleSaveCode = async (id: string) => {
+    if (!editingCode.trim()) { setEditingCodeId(null); return; }
+    try {
+      await api.put(`/org/structure`, { id, code: editingCode.trim() });
+      queryClient.invalidateQueries({ queryKey: ['org-structure'] });
+    } catch {}
+    setEditingCodeId(null);
+  };
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<{ role: UserRole; status: string }> }) =>
       api.put(`/org/users/${id}`, data),
