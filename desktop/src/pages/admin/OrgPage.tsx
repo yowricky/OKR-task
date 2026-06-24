@@ -107,7 +107,7 @@ function OrgTreeNode({ node, depth, onCodeEdit, onNameEdit, onEdit }: { node: Or
         <span className="text-xs text-muted-foreground">({node.code})</span>
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(node.id); }}
-          className="ml-1 p-0.5 opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity"
+          className="ml-1 p-0.5 opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity flex-shrink-0"
           title="编辑部门"
         >
           <Edit2 className="w-3 h-3" />
