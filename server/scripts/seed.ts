@@ -28,7 +28,7 @@ async function seed() {
   // Create org
   const [org] = (await pool.query(
     `INSERT INTO organizations (name, code) VALUES ($1, $2) ON CONFLICT (code) DO UPDATE SET name = $1 RETURNING id`,
-    ['默认组织', 'default']
+    ['组织架构', 'default']
   )).rows;
   console.log('Organization created:', org.id);
 

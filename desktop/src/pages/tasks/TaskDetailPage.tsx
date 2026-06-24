@@ -62,6 +62,12 @@ export function TaskDetailPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
+  // Inline edit state for priority and dueDate
+  const [editingPriority, setEditingPriority] = useState(false);
+  const [editPriority, setEditPriority] = useState<Priority>('medium');
+  const [editingDueDate, setEditingDueDate] = useState(false);
+  const [editDueDate, setEditDueDate] = useState('');
+
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -103,6 +109,26 @@ export function TaskDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  // --- Priority update mutation ---
+  const priorityMutation = useMutation({
+    mutationFn: (newPriority: Priority) => api.put<Task>(`/tasks/${id}`, { priority: newPriority }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setEditingPriority(false);
+    },
+  });
+
+  // --- Due date update mutation ---
+  const dueDateMutation = useMutation({
+    mutationFn: (newDueDate: string | null) => api.put<Task>(`/tasks/${id}`, { dueDate: newDueDate }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setEditingDueDate(false);
     },
   });
 
@@ -305,15 +331,49 @@ export function TaskDetailPage() {
           {/* Priority badge */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">优先级</span>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border',
-                priorityStyle.color
-              )}
-            >
-              {task.priority === 'high' && <Star className="w-3 h-3" />}
-              {PRIORITY_LABELS[task.priority].label}
-            </span>
+            {editingPriority ? (
+              <div className="flex items-center gap-1">
+                <select
+                  value={editPriority}
+                  onChange={(e) => setEditPriority(e.target.value as Priority)}
+                  className="text-xs font-medium rounded-lg border border-border bg-background px-2.5 py-1 outline-none focus:border-primary transition-colors"
+                  autoFocus
+                  onBlur={() => { if (editPriority !== task.priority) priorityMutation.mutate(editPriority); else setEditingPriority(false); }}
+                >
+                  {Object.entries(PRIORITY_LABELS).map(([value, info]) => (
+                    <option key={value} value={value}>{info.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => { priorityMutation.mutate(editPriority); }}
+                  disabled={priorityMutation.isPending}
+                  className="p-0.5 hover:text-success transition-colors"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => { setEditingPriority(false); }}
+                  className="p-0.5 hover:text-danger transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditPriority(task.priority); setEditingPriority(true); }}
+                className={cn(
+                  'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border hover:opacity-80 transition-opacity',
+                  priorityStyle.color
+                )}
+              >
+                {task.priority === 'high' && <Star className="w-3 h-3" />}
+                {PRIORITY_LABELS[task.priority].label}
+                <Edit3 className="w-3 h-3 opacity-50" />
+              </button>
+            )}
+            {priorityMutation.isPending && (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+            )}
           </div>
         </div>
 
