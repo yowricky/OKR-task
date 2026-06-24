@@ -91,7 +91,7 @@ function CreateOrgDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => vo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10" onClick={onClose}>
       <div className="bg-card rounded-xl shadow-xl border border-border p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold mb-4">新建部门</h3>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -158,7 +158,7 @@ function CreateUserDialog({ orgs, onClose }: { orgs: OrgNode[]; onClose: () => v
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10" onClick={onClose}>
       <div className="bg-card rounded-xl shadow-xl border border-border p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold mb-4">新建用户</h3>
         <form onSubmit={handleSubmit} className="space-y-3">

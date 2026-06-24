@@ -37,3 +37,8 @@
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 98%;
 }
+
+/* 全局弹窗遮罩透明度 10% */
+.dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.1);
+}

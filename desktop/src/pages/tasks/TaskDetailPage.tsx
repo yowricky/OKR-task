@@ -375,7 +375,7 @@ export function TaskDetailPage() {
 
       {/* --- Delete confirmation dialog --- */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
           <div className="bg-background rounded-xl shadow-lg border border-border w-full max-w-sm mx-4 p-6">
             <h3 className="text-base font-semibold">确认删除</h3>
             <p className="text-sm text-muted-foreground mt-2">
