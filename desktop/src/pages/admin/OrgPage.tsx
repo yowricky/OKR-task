@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
-import { ChevronRight, ChevronDown, Plus, Building2, Users, Shield, Edit2, Check, X, UserPlus, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Building2, Users, Shield, Edit2, Check, X, UserPlus, Trash2, Loader2 } from 'lucide-react';
 import type { Organization, User, UserRole } from '@app/shared';
 
 // ========== types ==========
@@ -24,15 +24,76 @@ interface CreateUserInput {
   role: UserRole;
 }
 
+// ========== Inline Text Edit ==========
+function InlineTextEdit({
+  value,
+  onSave,
+  onCancel,
+  placeholder,
+  inputType,
+}: {
+  value: string;
+  onSave: (val: string) => void;
+  onCancel: () => void;
+  placeholder?: string;
+  inputType?: string;
+}) {
+  const [val, setVal] = useState(value);
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type={inputType || 'text'}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        className="text-sm px-1.5 py-0.5 bg-background border border-border rounded outline-none focus:border-primary w-32"
+        placeholder={placeholder}
+        autoFocus
+        onKeyDown={(e) => { if (e.key === 'Enter') onSave(val); if (e.key === 'Escape') onCancel(); }}
+      />
+      <button onClick={() => onSave(val)} className="p-0.5 hover:text-success"><Check className="w-3.5 h-3.5" /></button>
+      <button onClick={onCancel} className="p-0.5 hover:text-danger"><X className="w-3.5 h-3.5" /></button>
+    </div>
+  );
+}
+
+// ========== Confirm Dialog ==========
+function ConfirmDialog({
+  message,
+  onConfirm,
+  onCancel,
+  isPending,
+}: {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
+      <div className="bg-background rounded-xl shadow-lg border border-border w-full max-w-sm mx-4 p-6">
+        <h3 className="text-base font-semibold">确认操作</h3>
+        <p className="text-sm text-muted-foreground mt-2">{message}</p>
+        <div className="flex justify-end gap-3 mt-6">
+          <button onClick={onCancel} className="px-4 py-2 text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:opacity-90 transition-opacity">取消</button>
+          <button onClick={onConfirm} disabled={isPending} className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-danger text-danger-foreground hover:opacity-90 transition-opacity disabled:opacity-50">
+            {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            确认
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ========== Org Tree Node ==========
-function OrgTreeNode({ node, depth, onCodeEdit }: { node: OrgNode; depth: number; onCodeEdit: (id: string) => void }) {
+function OrgTreeNode({ node, depth, onCodeEdit, onNameEdit, onEdit }: { node: OrgNode; depth: number; onCodeEdit: (id: string) => void; onNameEdit: (id: string) => void; onEdit: (id: string) => void }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
 
   return (
     <div>
       <div
-        className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-accent cursor-pointer text-sm"
+        className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-accent cursor-pointer text-sm group"
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
         onClick={() => hasChildren && setExpanded(!expanded)}
       >
@@ -45,8 +106,9 @@ function OrgTreeNode({ node, depth, onCodeEdit }: { node: OrgNode; depth: number
         <span className="font-medium">{node.name}</span>
         <span className="text-xs text-muted-foreground">({node.code})</span>
         <button
-          onClick={(e) => { e.stopPropagation(); onCodeEdit(node.id); }}
+          onClick={(e) => { e.stopPropagation(); onEdit(node.id); }}
           className="ml-1 p-0.5 opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity"
+          title="编辑部门"
         >
           <Edit2 className="w-3 h-3" />
         </button>
@@ -56,10 +118,55 @@ function OrgTreeNode({ node, depth, onCodeEdit }: { node: OrgNode; depth: number
           {node.children
             .sort((a, b) => (parseInt(a.code, 10) || 0) - (parseInt(b.code, 10) || 0))
             .map((child) => (
-              <OrgTreeNode key={child.id} node={child} depth={depth + 1} onCodeEdit={onCodeEdit} />
+              <OrgTreeNode key={child.id} node={child} depth={depth + 1} onCodeEdit={onCodeEdit} onNameEdit={onNameEdit} onEdit={onEdit} />
             ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ========== Edit Org Dialog ==========
+function EditOrgDialog({ org, onClose }: { org: OrgNode; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(org.name);
+  const [code, setCode] = useState(org.code);
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: { name: string; code: string }) => api.put(`/org/structure/${org.id}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-structure'] });
+      onClose();
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !code.trim()) return;
+    updateMutation.mutate({ name: name.trim(), code: code.trim() });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10" onClick={onClose}>
+      <div className="bg-card rounded-xl shadow-xl border border-border p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold mb-4">编辑部门</h3>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">部门名称</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="如：研发部" className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">部门编码</label>
+            <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="数字编码如 10" className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent">取消</button>
+            <button type="submit" disabled={updateMutation.isPending || !name.trim() || !code.trim()} className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50">
+              {updateMutation.isPending ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -304,8 +411,8 @@ export function OrgPage() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [editingRole, setEditingRole] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
-  const [editingCodeId, setEditingCodeId] = useState<string | null>(null);
-  const [editingCode, setEditingCode] = useState('');
+  const [editOrgDialog, setEditOrgDialog] = useState<OrgNode | null>(null);
+  const [editingUserField, setEditingUserField] = useState<{ id: string; field: string } | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch org tree
@@ -320,17 +427,8 @@ export function OrgPage() {
     queryFn: () => api.get<User[]>('/org/users'),
   });
 
-  // Update org code inline (uses PATCH-like update via org routes)
-  const handleSaveCode = async (id: string) => {
-    if (!editingCode.trim()) { setEditingCodeId(null); return; }
-    try {
-      await api.put(`/org/structure`, { id, code: editingCode.trim() });
-      queryClient.invalidateQueries({ queryKey: ['org-structure'] });
-    } catch {}
-    setEditingCodeId(null);
-  };
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<{ role: UserRole; status: string }> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       api.put(`/org/users/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['org-users'] });
@@ -345,6 +443,12 @@ export function OrgPage() {
   const handleSaveStatus = (userId: string, status: string) => {
     updateMutation.mutate({ id: userId, data: { status } });
     setEditingStatus(null);
+  };
+
+  const handleSaveUserField = (userId: string, field: string, value: string) => {
+    if (!value.trim()) { setEditingUserField(null); return; }
+    updateMutation.mutate({ id: userId, data: { [field]: value.trim() } });
+    setEditingUserField(null);
   };
 
   return (
@@ -403,7 +507,10 @@ export function OrgPage() {
             ) : (
               <div className="bg-card border border-border rounded-xl p-2">
                 {orgTree.map((node) => (
-                  <OrgTreeNode key={node.id} node={node} depth={0} />
+                  <OrgTreeNode key={node.id} node={node} depth={0} onCodeEdit={(id) => {}} onNameEdit={(id) => {}} onEdit={(id) => {
+                    const org = findOrg(orgTree, id);
+                    if (org) setEditOrgDialog(org);
+                  }} />
                 ))}
               </div>
             )}
@@ -444,9 +551,57 @@ export function OrgPage() {
                   <tbody>
                     {users.map((user) => (
                       <tr key={user.id} className="border-b border-border last:border-0 hover:bg-accent/30">
-                        <td className="px-4 py-3">{user.account}</td>
-                        <td className="px-4 py-3 font-medium">{user.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                        <td className="px-4 py-3">
+                          {editingUserField?.id === user.id && editingUserField?.field === 'account' ? (
+                            <InlineTextEdit
+                              value={user.account}
+                              onSave={(val) => handleSaveUserField(user.id, 'account', val)}
+                              onCancel={() => setEditingUserField(null)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setEditingUserField({ id: user.id, field: 'account' })}
+                              className="group flex items-center gap-1"
+                            >
+                              {user.account}
+                              <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {editingUserField?.id === user.id && editingUserField?.field === 'name' ? (
+                            <InlineTextEdit
+                              value={user.name}
+                              onSave={(val) => handleSaveUserField(user.id, 'name', val)}
+                              onCancel={() => setEditingUserField(null)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setEditingUserField({ id: user.id, field: 'name' })}
+                              className="group flex items-center gap-1"
+                            >
+                              {user.name}
+                              <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {editingUserField?.id === user.id && editingUserField?.field === 'email' ? (
+                            <InlineTextEdit
+                              value={user.email}
+                              onSave={(val) => handleSaveUserField(user.id, 'email', val)}
+                              onCancel={() => setEditingUserField(null)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setEditingUserField({ id: user.id, field: 'email' })}
+                              className="group flex items-center gap-1"
+                            >
+                              {user.email}
+                              <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                            </button>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           {editingRole === user.id ? (
                             <InlineRoleSelect userId={user.id} currentRole={user.role} onSave={(r) => handleSaveRole(user.id, r)} onCancel={() => setEditingRole(null)} />
@@ -480,6 +635,17 @@ export function OrgPage() {
       {/* Dialogs */}
       {showCreateOrg && <CreateOrgDialog orgs={orgTree} onClose={() => setShowCreateOrg(false)} />}
       {showCreateUser && <CreateUserDialog orgs={orgTree} onClose={() => setShowCreateUser(false)} />}
+      {editOrgDialog && <EditOrgDialog org={editOrgDialog} onClose={() => setEditOrgDialog(null)} />}
     </div>
   );
+}
+
+// ========== Helpers ==========
+function findOrg(list: OrgNode[], id: string): OrgNode | null {
+  for (const n of list) {
+    if (n.id === id) return n;
+    const found = findOrg(n.children, id);
+    if (found) return found;
+  }
+  return null;
 }

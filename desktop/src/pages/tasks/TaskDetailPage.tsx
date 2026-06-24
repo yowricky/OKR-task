@@ -52,6 +52,13 @@ function formatDateShort(iso: string | null): string {
   });
 }
 
+function formatDateForInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -417,7 +424,53 @@ export function TaskDetailPage() {
             <Calendar className="w-3.5 h-3.5" />
             截止日期
           </span>
-          <p className="text-sm">{formatDateShort(task.dueDate)}</p>
+          {editingDueDate ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+                className="text-sm bg-background border border-border rounded-lg px-2.5 py-1 outline-none focus:border-primary transition-colors"
+                autoFocus
+              />
+              <button
+                onClick={() => dueDateMutation.mutate(editDueDate || null)}
+                disabled={dueDateMutation.isPending}
+                className="p-0.5 hover:text-success transition-colors"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setEditingDueDate(false)}
+                className="p-0.5 hover:text-danger transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              {task.dueDate && (
+                <button
+                  onClick={() => dueDateMutation.mutate(null)}
+                  disabled={dueDateMutation.isPending}
+                  className="text-xs text-danger hover:underline"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setEditDueDate(task.dueDate ? formatDateForInput(task.dueDate) : '');
+                setEditingDueDate(true);
+              }}
+              className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors group"
+            >
+              <p className="text-sm">{formatDateShort(task.dueDate)}</p>
+              <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+            </button>
+          )}
+          {dueDateMutation.isPending && (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-1 inline" />
+          )}
         </div>
 
         {/* Timestamps */}

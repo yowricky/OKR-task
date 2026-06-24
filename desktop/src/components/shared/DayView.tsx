@@ -7,11 +7,12 @@ interface DayViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onDateClick: (date: Date) => void;
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8:00 - 20:00
 
-export function DayView({ currentDate, events, onDateClick }: DayViewProps) {
+export function DayView({ currentDate, events, onDateClick, onEventClick }: DayViewProps) {
   const dayEvents = events.filter(e => isSameDay(parseISO(e.startTime), currentDate));
   const allDayEvents = dayEvents.filter(e => e.isAllDay);
   const timedEvents = dayEvents.filter(e => !e.isAllDay);
@@ -56,8 +57,9 @@ export function DayView({ currentDate, events, onDateClick }: DayViewProps) {
             {allDayEvents.map(event => (
               <div
                 key={event.id}
+                onClick={() => onEventClick?.(event)}
                 className={cn(
-                  'px-2 py-1 rounded text-xs font-medium',
+                  'px-2 py-1 rounded text-xs font-medium cursor-pointer',
                   event.type === 'task'
                     ? 'bg-primary/10 text-primary border border-primary/20'
                     : 'bg-success/10 text-success border border-success/20'
@@ -88,6 +90,7 @@ export function DayView({ currentDate, events, onDateClick }: DayViewProps) {
             return (
               <div
                 key={event.id}
+                onClick={() => onEventClick?.(event)}
                 className={cn(
                   'absolute left-[68px] right-2 px-2 py-1 rounded text-xs overflow-hidden cursor-pointer border',
                   event.type === 'task'

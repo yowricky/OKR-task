@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { createOrgSchema, createUserSchema, updateUserSchema } from './org.schema';
-import { getOrgTree, listUsers, createUser, updateUser, createOrg } from './org.service';
+import { getOrgTree, listUsers, createUser, updateUser, createOrg, updateOrg } from './org.service';
+import { z } from 'zod';
 
 export async function orgRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -15,6 +16,13 @@ export async function orgRoutes(app: FastifyInstance) {
   app.post('/structure', { preHandler: requireRole('admin') }, async (req) => {
     const input = createOrgSchema.parse(req.body);
     const org = await createOrg(input);
+    return { code: 200, data: org, message: 'ok' };
+  });
+
+  app.put('/structure/:id', { preHandler: requireRole('admin') }, async (req) => {
+    const { id } = req.params as { id: string };
+    const input = createOrgSchema.partial().parse(req.body);
+    const org = await updateOrg(id, input);
     return { code: 200, data: org, message: 'ok' };
   });
 

@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { createObjectiveSchema, createKRSchema, okrQuerySchema } from './okr.schema';
-import { listObjectives, getObjective, createObjective, createKeyResult, updateKeyResultProgress, getDashboard, getKeyResult } from './okr.service';
+import { listObjectives, getObjective, createObjective, createKeyResult, updateKeyResultProgress, updateObjective, deleteObjective, updateKeyResult, deleteKeyResult, getDashboard, getKeyResult } from './okr.service';
 
 const progressSchema = z.object({ currentValue: z.number().min(0) });
 
@@ -53,5 +53,35 @@ export async function okrRoutes(app: FastifyInstance) {
     const query = okrQuerySchema.parse(req.query);
     const dashboard = await getDashboard(query.orgId, query.period);
     return { code: 200, data: dashboard, message: 'ok' };
+  });
+
+  // ---- PUT /objectives/:id ----
+  app.put('/objectives/:id', { preHandler: requireRole('admin', 'manager') }, async (req) => {
+    const { id } = req.params as { id: string };
+    const input = createObjectiveSchema.partial().parse(req.body);
+    const obj = await updateObjective(id, input);
+    return { code: 200, data: obj, message: 'ok' };
+  });
+
+  // ---- DELETE /objectives/:id ----
+  app.delete('/objectives/:id', { preHandler: requireRole('admin') }, async (req) => {
+    const { id } = req.params as { id: string };
+    await deleteObjective(id);
+    return { code: 200, data: null, message: 'ok' };
+  });
+
+  // ---- PUT /key-results/:id ----
+  app.put('/key-results/:id', { preHandler: requireRole('admin', 'manager') }, async (req) => {
+    const { id } = req.params as { id: string };
+    const input = createKRSchema.partial().parse(req.body);
+    const kr = await updateKeyResult(id, input);
+    return { code: 200, data: kr, message: 'ok' };
+  });
+
+  // ---- DELETE /key-results/:id ----
+  app.delete('/key-results/:id', { preHandler: requireRole('admin') }, async (req) => {
+    const { id } = req.params as { id: string };
+    await deleteKeyResult(id);
+    return { code: 200, data: null, message: 'ok' };
   });
 }

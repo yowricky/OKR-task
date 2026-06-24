@@ -19,6 +19,14 @@ export async function createOrg(input: { name: string; code: string; parentId?: 
   return org;
 }
 
+export async function updateOrg(id: string, input: { name?: string; code?: string; parentId?: string }) {
+  const [org] = await db.update(organizations)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(organizations.id, id))
+    .returning();
+  return org || null;
+}
+
 export async function listUsers(orgId?: string) {
   let result;
   if (orgId) {

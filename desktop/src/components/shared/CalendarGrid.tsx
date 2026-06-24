@@ -7,9 +7,10 @@ interface CalendarGridProps {
   currentDate: Date;
   events: CalendarEvent[];
   onDateClick: (date: Date) => void;
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
-export function CalendarGrid({ currentDate, events, onDateClick }: CalendarGridProps) {
+export function CalendarGrid({ currentDate, events, onDateClick, onEventClick }: CalendarGridProps) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -48,6 +49,27 @@ export function CalendarGrid({ currentDate, events, onDateClick }: CalendarGridP
               {hasTask && <div className="h-1 flex-1 rounded bg-primary" />}
               {hasEvent && <div className="h-1 flex-1 rounded bg-success" />}
             </div>
+            {dayEvents.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {dayEvents.slice(0, 3).map(event => (
+                  <div
+                    key={event.id}
+                    onClick={(e) => { e.stopPropagation(); onEventClick?.(event); }}
+                    className={cn(
+                      'text-[10px] truncate rounded px-0.5 leading-4',
+                      event.type === 'task'
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-success/10 text-success'
+                    )}
+                  >
+                    {event.title}
+                  </div>
+                ))}
+                {dayEvents.length > 3 && (
+                  <div className="text-[10px] text-muted-foreground">+{dayEvents.length - 3} 更多</div>
+                )}
+              </div>
+            )}
           </button>
         );
       })}

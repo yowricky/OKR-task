@@ -7,11 +7,12 @@ interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onDateClick: (date: Date) => void;
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8:00 - 20:00
 
-export function WeekView({ currentDate, events, onDateClick }: WeekViewProps) {
+export function WeekView({ currentDate, events, onDateClick, onEventClick }: WeekViewProps) {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -91,6 +92,7 @@ export function WeekView({ currentDate, events, onDateClick }: WeekViewProps) {
               return (
                 <div
                   key={event.id}
+                  onClick={(e) => { e.stopPropagation(); onEventClick?.(event); }}
                   className={cn(
                     'absolute left-0 right-0 mx-0.5 px-1.5 py-0.5 rounded text-xs overflow-hidden cursor-pointer border',
                     event.type === 'task'

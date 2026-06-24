@@ -45,6 +45,34 @@ export async function updateKeyResultProgress(id: string, currentValue: number) 
   return updated;
 }
 
+export async function updateObjective(id: string, input: { title?: string; description?: string; period?: string; periodLabel?: string; weight?: number; status?: string }) {
+  const [obj] = await db.update(objectives)
+    .set({ ...input, updatedAt: new Date().toISOString() })
+    .where(eq(objectives.id, id))
+    .returning();
+  return obj || null;
+}
+
+export async function deleteObjective(id: string) {
+  // Delete child KRs first
+  await db.delete(keyResults).where(eq(keyResults.objectiveId, id));
+  const [obj] = await db.delete(objectives).where(eq(objectives.id, id)).returning();
+  return obj || null;
+}
+
+export async function updateKeyResult(id: string, input: { title?: string; targetValue?: number; unit?: string; description?: string }) {
+  const [kr] = await db.update(keyResults)
+    .set({ ...input, updatedAt: new Date().toISOString() })
+    .where(eq(keyResults.id, id))
+    .returning();
+  return kr || null;
+}
+
+export async function deleteKeyResult(id: string) {
+  const [kr] = await db.delete(keyResults).where(eq(keyResults.id, id)).returning();
+  return kr || null;
+}
+
 export async function getDashboard(orgId?: string, period?: string) {
   const conditions = [];
   if (orgId) conditions.push(eq(objectives.orgId, orgId));
