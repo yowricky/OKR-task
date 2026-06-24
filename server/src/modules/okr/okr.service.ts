@@ -53,6 +53,41 @@ export async function updateObjective(id: string, input: { title?: string; descr
   return obj || null;
 }
 
+// Validate and enforce OKR lifecycle state transitions
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  draft: ['active'],
+  active: ['reviewing'],
+  reviewing: ['closed', 'active'],
+  closed: ['active'],
+};
+
+export async function transitionObjective(id: string, toStatus: string) {
+  const [obj] = await db.select().from(objectives).where(eq(objectives.id, id)).limit(1);
+  if (!obj) throw new Error('目标不存在');
+
+  const allowed = VALID_TRANSITIONS[obj.status];
+  if (!allowed || !allowed.includes(toStatus)) {
+    throw new Error(`不允许从 ${obj.status} 转换到 ${toStatus}`);
+  }
+
+  const [updated] = await db.update(objectives)
+    .set({ status: toStatus } as any)
+    .where(eq(objectives.id, id))
+    .returning();
+  return updated;
+}
+
+export async function reviewKeyResult(id: string, reviewScore: number, reviewNote?: string) {
+  const [kr] = await db.select().from(keyResults).where(eq(keyResults.id, id)).limit(1);
+  if (!kr) throw new Error('KR 不存在');
+
+  const [updated] = await db.update(keyResults)
+    .set({ reviewScore, reviewNote: reviewNote || null } as any)
+    .where(eq(keyResults.id, id))
+    .returning();
+  return updated;
+}
+
 export async function deleteObjective(id: string) {
   // Delete child KRs first
   await db.delete(keyResults).where(eq(keyResults.objectiveId, id));

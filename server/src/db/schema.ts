@@ -6,6 +6,7 @@ export const priorityEnum = pgEnum('priority', ['high', 'medium', 'low']);
 export const eventTypeEnum = pgEnum('event_type', ['event', 'task']);
 export const riskLevelEnum = pgEnum('risk_level', ['high', 'medium', 'low']);
 export const riskStatusEnum = pgEnum('risk_status', ['open', 'investigating', 'resolved']);
+export const okrStatusEnum = pgEnum('okr_status', ['draft', 'active', 'reviewing', 'closed']);
 
 export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -39,7 +40,7 @@ export const objectives = pgTable('objectives', {
   period: varchar('period', { length: 20 }).notNull(),
   periodLabel: varchar('period_label', { length: 100 }).notNull(),
   weight: real('weight').default(1),
-  status: varchar('status', { length: 20 }).notNull().default('active'),
+  status: okrStatusEnum('status').notNull().default('draft'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -54,6 +55,8 @@ export const keyResults = pgTable('key_results', {
   unit: varchar('unit', { length: 50 }).notNull(),
   ownerId: uuid('owner_id').notNull().references(() => users.id),
   progress: real('progress').default(0),
+  reviewScore: real('review_score'),
+  reviewNote: text('review_note'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

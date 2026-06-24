@@ -93,6 +93,8 @@ export interface CreateEventInput {
   recurrence?: string;
 }
 
+export type OKRStatus = 'draft' | 'active' | 'reviewing' | 'closed';
+
 // ========== OKR ==========
 export interface Objective {
   id: string;
@@ -102,7 +104,7 @@ export interface Objective {
   period: PeriodType;
   periodLabel: string;
   weight: number;
-  status: 'active' | 'closed';
+  status: OKRStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -116,7 +118,9 @@ export interface KeyResult {
   currentValue: number;
   unit: string;
   ownerId: string;
-  progress: number; // 服务端计算字段: Math.min(100, Math.round(currentValue / targetValue * 100))
+  progress: number;
+  reviewScore: number | null;
+  reviewNote: string | null;
   createdAt: string;
   updatedAt: string;
 }

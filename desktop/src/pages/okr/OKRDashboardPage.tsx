@@ -3,12 +3,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
-import type { Objective, KeyResult, CreateObjectiveInput, CreateKeyResultInput } from '@app/shared';
-import { Plus, Target, X, Edit3, Trash2, Check, Loader2 } from 'lucide-react';
+import type { Objective, KeyResult, CreateObjectiveInput, CreateKeyResultInput, OKRStatus } from '@app/shared';
+import { Plus, Target, X, Edit3, Trash2, Check, Loader2, Play, ClipboardCheck, Archive, RotateCcw, SlidersHorizontal } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+const STATUS_LABELS: Record<OKRStatus, string> = {
+  draft: '草稿',
+  active: '执行中',
+  reviewing: '评估中',
+  closed: '已归档',
+};
+
+const STATUS_COLORS: Record<OKRStatus, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  active: 'bg-success/20 text-success',
+  reviewing: 'bg-warning/20 text-warning',
+  closed: 'bg-accent text-muted-foreground',
+};
 
 interface DashboardObjective extends Objective {
   keyResults: KeyResult[];
@@ -341,6 +355,7 @@ export function OKRDashboardPage() {
   const [editingKRId, setEditingKRId] = useState<string | null>(null);
   const [editingKRForm, setEditingKRForm] = useState<KRForm | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'objective' | 'kr'; id: string; title: string; objectiveId?: string } | null>(null);
+  const [reviewingKR, setReviewingKR] = useState<string | null>(null);
 
   // ---- Fetch dashboard ----
   const { data: objectives = [], isLoading } = useQuery<DashboardObjective[]>({
@@ -406,6 +421,25 @@ export function OKRDashboardPage() {
     },
   });
 
+  // ---- Transition objective mutation ----
+  const transitionMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.put<Objective>(`/okr/objectives/${id}/status`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['okr', 'dashboard'] });
+    },
+  });
+
+  // ---- Review KR mutation ----
+  const reviewKRMutation = useMutation({
+    mutationFn: ({ id, reviewScore, reviewNote }: { id: string; reviewScore: number; reviewNote?: string }) =>
+      api.put<KeyResult>(`/okr/key-results/${id}/review`, { reviewScore, reviewNote }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['okr', 'dashboard'] });
+      setReviewingKR(null);
+    },
+  });
+
   function startEditObjective(obj: DashboardObjective) {
     setEditingObjectiveForm({
       title: obj.title,
@@ -445,7 +479,19 @@ export function OKRDashboardPage() {
     deleteObjectiveMutation.isPending ||
     createKRMutation.isPending ||
     updateKRMutation.isPending ||
-    deleteKRMutation.isPending;
+    deleteKRMutation.isPending ||
+    transitionMutation.isPending ||
+    reviewKRMutation.isPending;
+
+  const TRANSITION_ACTIONS: Partial<Record<OKRStatus, { label: string; to: string; icon: typeof Play }>> = {
+    draft: { label: '开始执行', to: 'active', icon: Play },
+    active: { label: '进入评估', to: 'reviewing', icon: ClipboardCheck },
+    reviewing: { label: '归档', to: 'closed', icon: Archive },
+    closed: { label: '重新激活', to: 'active', icon: RotateCcw },
+  };
+
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
 
   return (
     <div className="flex flex-col h-full">
@@ -496,14 +542,32 @@ export function OKRDashboardPage() {
                     <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary">
                       {obj.periodLabel}
                     </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[obj.status]}`}>
+                      {STATUS_LABELS[obj.status]}
+                    </span>
                     <h2 className="font-semibold">O: {obj.title}</h2>
                     {obj.weight > 0 && (
                       <span className="text-xs text-muted-foreground ml-auto">
                         权重 {obj.weight}
                       </span>
                     )}
-                    {/* Objective edit/delete buttons */}
+                    {/* Objective edit/delete/lifecycle buttons */}
                     <div className="flex items-center gap-1 opacity-0 group-hover/objective:opacity-100 transition-opacity">
+                      {isAdmin && (() => {
+                        const action = TRANSITION_ACTIONS[obj.status];
+                        if (!action) return null;
+                        const Icon = action.icon;
+                        return (
+                          <button
+                            onClick={() => transitionMutation.mutate({ id: obj.id, status: action.to })}
+                            className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-success transition-colors"
+                            title={action.label}
+                            disabled={transitionMutation.isPending}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                          </button>
+                        );
+                      })()}
                       <button
                         onClick={() => startEditObjective(obj)}
                         className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
@@ -550,8 +614,20 @@ export function OKRDashboardPage() {
                               <span>
                                 {kr.currentValue} / {kr.targetValue} {kr.unit}
                               </span>
-                              {/* KR edit/delete buttons */}
+                              {kr.reviewScore != null && (
+                                <span className="text-warning">评分: {kr.reviewScore}</span>
+                              )}
+                              {/* KR edit/delete/review buttons */}
                               <div className="flex items-center gap-1 opacity-0 group-hover/kr:opacity-100 transition-opacity">
+                                {obj.status === 'reviewing' && isAdmin && (
+                                  <button
+                                    onClick={() => setReviewingKR(kr.id)}
+                                    className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-warning transition-colors"
+                                    title="评分"
+                                  >
+                                    <SlidersHorizontal className="w-3 h-3" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => startEditKR(kr)}
                                   className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
@@ -603,7 +679,7 @@ export function OKRDashboardPage() {
         {/* Mutation loading indicator */}
         {isPending && (
           <div className="fixed bottom-6 right-6 px-4 py-2 bg-foreground text-background rounded-lg text-sm shadow-lg">
-            保存中...
+            {transitionMutation.isPending ? '状态变更中...' : reviewKRMutation.isPending ? '评分中...' : '保存中...'}
           </div>
         )}
       </div>
@@ -623,6 +699,66 @@ export function OKRDashboardPage() {
           isPending={deleteObjectiveMutation.isPending || deleteKRMutation.isPending}
         />
       )}
+
+      {/* KR Review dialog */}
+      {reviewingKR && (
+        <ReviewKRDialog
+          onSave={(score, note) => {
+            reviewKRMutation.mutate({ id: reviewingKR, reviewScore: score, reviewNote: note });
+          }}
+          onCancel={() => setReviewingKR(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReviewKRDialog({ onSave, onCancel }: { onSave: (score: number, note?: string) => void; onCancel: () => void }) {
+  const [score, setScore] = useState(70);
+  const [note, setNote] = useState('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10" onClick={onCancel}>
+      <div className="bg-background rounded-xl shadow-lg border border-border w-full max-w-sm mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-semibold mb-4">KR 评分</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">得分: {score}</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={score}
+              onChange={(e) => setScore(Number(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>0</span>
+              <span className={score >= 70 ? 'text-success' : score >= 40 ? 'text-warning' : 'text-danger'}>{score}</span>
+              <span>100</span>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">评语（可选）</label>
+            <textarea
+              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              rows={2}
+              placeholder="评价..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button onClick={onCancel} className="px-4 py-2 text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:opacity-90 transition-opacity">取消</button>
+            <button
+              onClick={() => onSave(score, note.trim() || undefined)}
+              className="px-4 py-2 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              保存评分
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { createObjectiveSchema, createKRSchema, okrQuerySchema } from './okr.schema';
-import { listObjectives, getObjective, createObjective, createKeyResult, updateKeyResultProgress, updateObjective, deleteObjective, updateKeyResult, deleteKeyResult, getDashboard, getKeyResult } from './okr.service';
+import { listObjectives, getObjective, createObjective, createKeyResult, updateKeyResultProgress, updateObjective, deleteObjective, updateKeyResult, deleteKeyResult, getDashboard, getKeyResult, transitionObjective, reviewKeyResult } from './okr.service';
 
 const progressSchema = z.object({ currentValue: z.number().min(0) });
 
@@ -83,5 +83,29 @@ export async function okrRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     await deleteKeyResult(id);
     return { code: 200, data: null, message: 'ok' };
+  });
+
+  // ---- PUT /objectives/:id/status (lifecycle transition) ----
+  app.put('/objectives/:id/status', { preHandler: requireRole('admin', 'manager') }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { status } = req.body as { status: string };
+    try {
+      const obj = await transitionObjective(id, status);
+      return { code: 200, data: obj, message: 'ok' };
+    } catch (err: any) {
+      return reply.status(400).send({ code: 400, message: err.message, data: null });
+    }
+  });
+
+  // ---- PUT /key-results/:id/review (scoring) ----
+  app.put('/key-results/:id/review', { preHandler: requireRole('admin', 'manager') }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { reviewScore, reviewNote } = req.body as { reviewScore: number; reviewNote?: string };
+    try {
+      const kr = await reviewKeyResult(id, reviewScore, reviewNote);
+      return { code: 200, data: kr, message: 'ok' };
+    } catch (err: any) {
+      return reply.status(400).send({ code: 400, message: err.message, data: null });
+    }
   });
 }
